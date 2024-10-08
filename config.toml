@@ -1,0 +1,7 @@
+[ICM]
+api_key = "APIKEY"
+coordinates = "332,266"
+
+[AccuWeather]
+apiKey = "APIKEY"
+locationKey = 274663

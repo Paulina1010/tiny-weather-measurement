@@ -1,75 +1,76 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone
 import sqlite3
 import urllib.request
 import sys
+import itertools
+import tomllib
 
-con = sqlite3.connect("db.sqlite")
+def fetch_icm(model, grid, coords, field, level, token):
+    date = (datetime.today() - timedelta(days=2)).strftime("%Y-%m-%dT00")
+    url = "https://api.meteo.pl/api/v1/model/%s/grid/%s/coordinates/%s/field/%s/level/%d/date/%s/forecast/" \
+        % (model, grid, coords, field, level, date)
 
-#ICM
-#Temperature
-#Hourly data for 5 days
-url = "https://api.meteo.pl/api/v1/model/wrf/grid/d02_XLONG_XLAT/coordinates/332,266/field/T2/level/0/date/2024-09-30T00/forecast/"
-headers = {"Authorization": "Token %s" % sys.argv[1]}
-req = urllib.request.Request(url, headers=headers, method="POST")
-try:
-    with urllib.request.urlopen(req) as f:
-        data = json.load(f)
-        forecast_date = "2024-09-30T00"
-        load_date = datetime.now().isoformat()
-        for t, v in zip(data["times"], data["data"]):
-            v = v - 273.15  #kelvin to celcius
-            con.execute("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, load_date, source) VALUES(?, ?, ?, ?, ?, ?, ?)", (t, "temperature", v, "hour", forecast_date, load_date, "ICM"))
-        con.commit()
-except urllib.error.HTTPError as e:
-    print(e, e.read())
+    headers = {"Authorization": "Token %s" % token}
+    req = urllib.request.Request(url, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req) as f:
+            data = json.load(f)
+    except urllib.error.HTTPError as e:
+        print(e, e.read())
+        raise
 
-#Precipitation
-url = "https://api.meteo.pl/api/v1/model/wrf/grid/d02_XLONG_XLAT/coordinates/332%2C266/field/RAINNC/level/0/date/2024-09-30T00/forecast/"
-headers = {"Authorization": "Token %s" % sys.argv[1]}
-req = urllib.request.Request(url, headers=headers, method="POST")
-with urllib.request.urlopen(req) as f:
-    data = json.load(f)
-    forecast_date = "2024-09-30T00"
-    load_date = datetime.now().isoformat()
-    for t, v in zip(data["times"], data["data"]):
-        con.execute("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, load_date, source) VALUES(?, ?, ?, ?, ?, ?, ?)", (t, "precipitation", v, "hour", forecast_date, load_date, "ICM"))
-    con.commit()
+    assert field in ("T2", "RAINNC")
+    if field == "T2":
+        data["data"] = [x-273.15 for x in data["data"]]
+        metric = "temperature"
+    elif field == "RAINNC":
+        metric = "precipitation"
+    return [(x, metric, y, "hour", date, "ICM") for x, y in zip(data["times"], data["data"])]
 
-#AccuWeather - Interia
-#Load forecast for 12h
-url = "http://dataservice.accuweather.com/forecasts/v1/hourly/12hour/274663?apikey=%s&metric=true" % sys.argv[2] #code for Warsaw
-with urllib.request.urlopen(url) as f:
-    data = json.load(f)
-    forecast_date = datetime.now().isoformat()
-    load_date = datetime.now().isoformat()
-    for row in data:
-        #print(row)
-        #Temperature
-        date_value = row["DateTime"]
-        value = row["Temperature"]["Value"]
-        con.execute("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, load_date, source) VALUES(?, ?, ?, ?, ?, ?, ?)", (date_value, "temperature", value, "hour", forecast_date, load_date, "AccuWeather"))
-        #PrecipitationProbability
-        value = row["PrecipitationProbability"]
-        con.execute("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, load_date, source) VALUES(?, ?, ?, ?, ?, ?, ?)", (date_value, "precipitation_probability", value, "hour", forecast_date, load_date, "AccuWeather"))
-    con.commit()
+def fetch_aw(forecast, period, loc_key, token):
+    url = "http://dataservice.accuweather.com/forecasts/v1/%s/%s/%s?apikey=%s&metric=true" \
+        % (forecast, period, loc_key, token)
+    try:
+        with urllib.request.urlopen(url) as f:
+            data = json.load(f)
+            forecast_date = datetime.now().isoformat()
+    except urllib.error.HTTPError as e:
+        print(e, e.read())
+        raise
 
-#Load forecast for 5 days
-#Min and max temperature
-url = "http://dataservice.accuweather.com/forecasts/v1/daily/5day/274663?apikey=%s&metric=true" % sys.argv[2] #code for Warsaw
-with urllib.request.urlopen(url) as f:
-    data = json.load(f)
-    forecast_date = datetime.now().isoformat()
-    load_date = datetime.now().isoformat()
-    for row in data["DailyForecasts"]:
-        print(row)
-   
-        date_value = row['Date']
-        value_min = row['Temperature']['Minimum']['Value']
-        con.execute("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, load_date, source) VALUES(?, ?, ?, ?, ?, ?, ?)", (date_value, "temperature min", value_min, "daily", forecast_date, load_date, "AccuWeather"))
-    for row in data["DailyForecasts"]:
-        date_value = row['Date']
-        value_max = row['Temperature']['Maximum']['Value']
-        con.execute("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, load_date, source) VALUES(?, ?, ?, ?, ?, ?, ?)", (date_value, "temperature max", value_max, "daily", forecast_date, load_date, "AccuWeather"))
+    assert forecast in ("hourly", "daily")
+    if forecast == "hourly":
+        return itertools.chain.from_iterable(( #generator krotek zawierający krotki
+            (
+                (x["DateTime"], "temperature", x["Temperature"]["Value"], "hour", forecast_date, "AccuWeather"),
+                (x["DateTime"], "precipitation_probability", x["PrecipitationProbability"], "hour", forecast_date, "AccuWeather"),
+            )
+            for x in data
+        ))
+    if forecast == "daily":
+        return itertools.chain.from_iterable((
+            (
+                (x["Date"], "temperature_min", x["Temperature"]["Minimum"]["Value"], "day", forecast_date, "AccuWeather"),
+                (x["Date"], "temperature_max", x["Temperature"]["Maximum"]["Value"], "day", forecast_date, "AccuWeather"),
+            )
+            for x in data["DailyForecasts"]
+        ))
+
+if __name__ == "__main__":
+    with open(sys.argv[1], "rb") as f:
+        config = tomllib.load(f)
+
+    con = sqlite3.connect(sys.argv[2])
+
+
+    if sys.argv[3] == "daily":
+        rows += fetch_icm("wrf", "d02_XLONG_XLAT", config["ICM"]["coordinates"], "T2", 0, config["ICM"]["api_key"])
+        rows += fetch_icm("wrf", "d02_XLONG_XLAT", config["ICM"]["coordinates"], "RAINNC", 0, config["ICM"]["api_key"])
+        rows += fetch_aw("daily", "5day", config["AccuWeather"]["locationKey"], config["AccuWeather"]["apiKey"])
+    elif sys.argv[3] == "hourly":
+        rows += fetch_aw("hourly", "12hour", config["AccuWeather"]["locationKey"], config["AccuWeather"]["apiKey"])
+
+    con.executemany("INSERT INTO Weather(date_value, metric, value, forecast_period, forecast_date, source) VALUES(?, ?, ?, ?, ?, ?)", rows)
     con.commit()
