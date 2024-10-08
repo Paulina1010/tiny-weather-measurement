@@ -64,6 +64,7 @@ if __name__ == "__main__":
 
     con = sqlite3.connect(sys.argv[2])
 
+    rows = []
 
     if sys.argv[3] == "daily":
         rows += fetch_icm("wrf", "d02_XLONG_XLAT", config["ICM"]["coordinates"], "T2", 0, config["ICM"]["api_key"])
