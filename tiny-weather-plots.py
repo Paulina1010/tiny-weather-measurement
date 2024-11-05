@@ -75,13 +75,13 @@ def forecast_precipitation(date, file_name):
     plt.savefig('%s.png' % file_name)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: tiny-weather-plots.py KIND PATH", file=sys.stderr)
+    if len(sys.argv) < 4:
+        print("Usage: tiny-weather-plots.py DB_PATH KIND PATH", file=sys.stderr)
         exit(1)
 
-    con = sqlite3.connect("db.sqlite")
+    con = sqlite3.connect(sys.argv[1])
     today = date.today()
-    if sys.argv[1] == "temp":
-        forecast_temperature(today, sys.argv[2])
-    if sys.argv[1] == "prec":
-        forecast_precipitation(today, sys.argv[2])
+    if sys.argv[2] == "temp":
+        forecast_temperature(today, sys.argv[3])
+    if sys.argv[2] == "prec":
+        forecast_precipitation(today, sys.argv[3])
