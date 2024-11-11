@@ -69,8 +69,9 @@ def forecast_precipitation(date, file_name):
     plt.ylabel('Opady [mm/h]')
     plt.title('Progonoza godzinowa opadów na dzień %s' % today)
     plt.grid(True)
-    bbox = dict(boxstyle='square', lw=2, ec='gray', fc=(0.9, 0.9, .9, .5), alpha=0.5)
-    plt.gcf().text(0.7,0.8,"<2.5mm/h - lekki opad,              2.5-7.5mm/h - umiarkowany,      >7.5mm/h - silny opad", ha='left', wrap=True, alpha=0.5, bbox=bbox)
+    bbox = dict(boxstyle='square', linewidth=1, edgecolor='lightgray', facecolor='white')
+    textstr = "<2.5mm/h - lekki opad,\n 2.5-7.5mm/h - umiarkowany, \n>7.5mm/h - silny opad"
+    plt.gcf().text(0.62,0.77, textstr, ha='left', color='royalblue', wrap=True, bbox=bbox)
     plt.axhline(y=2.5, color='lightsteelblue')
     plt.axhline(y=7.5, color='royalblue')
     plt.savefig(file_name, bbox_inches='tight')
