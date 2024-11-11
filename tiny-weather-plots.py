@@ -7,6 +7,8 @@ import matplotlib.dates as mdates
 import operator
 import sys
 
+SCALE = 0.8
+
 # Forecast comparison for 12 hours (for ICM and AccuWeather)
 def forecast_temperature(date, file_name):
     cur = con.execute("""
@@ -20,8 +22,7 @@ def forecast_temperature(date, file_name):
             WHERE X.RN = 1
             ORDER BY source, date_value
             """, ("%sT%%" % today,))
-
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(SCALE*10, SCALE*6))
 
     for source, data in groupby(cur, operator.itemgetter(0)):
         try:
@@ -50,7 +51,7 @@ def forecast_precipitation(date, file_name):
             ORDER BY source, date_value
             """, ("%sT%%" % today,))
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(SCALE*10, SCALE*6))
 
     for source, data in groupby(cur, operator.itemgetter(0)):
         try:
