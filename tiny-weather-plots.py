@@ -39,7 +39,7 @@ def forecast_temperature(date, file_name):
     plt.ylabel('Temperatura [°C]')
     plt.title('Progonoza godzinowa temperatury na dzień %s' % today)
     plt.grid(True)
-    plt.savefig(file_name)
+    plt.savefig(file_name, bbox_inches='tight')
 
 # Forecast precipitation (only from ICM)
 def forecast_precipitation(date, file_name):
@@ -72,7 +72,7 @@ def forecast_precipitation(date, file_name):
     plt.gcf().text(0.7,0.8,"<2.5mm/h - lekki opad,              2.5-7.5mm/h - umiarkowany,      >7.5mm/h - silny opad", ha='left', wrap=True, alpha=0.5, bbox=bbox)
     plt.axhline(y=2.5, color='lightsteelblue')
     plt.axhline(y=7.5, color='royalblue')
-    plt.savefig(file_name)
+    plt.savefig(file_name, bbox_inches='tight')
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
