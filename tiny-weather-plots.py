@@ -38,7 +38,7 @@ def forecast_temperature(date, file_name):
     plt.gcf().autofmt_xdate()
     plt.xlabel('Godzina')
     plt.ylabel('Temperatura [°C]')
-    plt.title('Progonoza godzinowa temperatury na dzień %s' % today)
+    plt.title('Progonoza godzinowa temperatury na dzień %s' % today, y=1.05)
     plt.grid(True)
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -67,7 +67,7 @@ def forecast_precipitation(date, file_name):
     plt.gcf().autofmt_xdate()
     plt.xlabel('Godzina')
     plt.ylabel('Opady [mm/h]')
-    plt.title('Progonoza godzinowa opadów na dzień %s' % today)
+    plt.title('Progonoza godzinowa opadów na dzień %s' % today, y=1.05)
     plt.grid(True)
     bbox = dict(boxstyle='square', linewidth=1, edgecolor='lightgray', facecolor='white')
     textstr = "<2.5mm/h - lekki opad,\n 2.5-7.5mm/h - umiarkowany, \n>7.5mm/h - silny opad"
